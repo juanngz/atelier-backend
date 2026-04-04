@@ -13,8 +13,8 @@ productRouter.get('/', async (req: Request, res: Response) => {
       where: search
         ? {
             OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { category: { contains: search, mode: 'insensitive' } },
+              { name: { contains: search } },
+              { category: { contains: search } },
             ],
           }
         : undefined,
@@ -52,14 +52,26 @@ productRouter.post('/', async (req: Request, res: Response) => {
   try {
     const { name, price, stock, category, image, description } = req.body;
 
+    if (!name || price === undefined || price === null) {
+      res.status(400).json({ error: 'name and price are required' });
+      return;
+    }
+
     const product = await prisma.product.create({
-      data: { name, price, stock, category, image, description },
+      data: {
+        name,
+        price: Number(price),
+        stock: Number(stock) || 0,
+        ...(category ? { category } : {}),
+        ...(image ? { image } : {}),
+        ...(description ? { description } : {}),
+      },
     });
 
     res.status(201).json(product);
   } catch (error: any) {
     console.error('Error creating product:', error);
-    res.status(500).json({ error: 'Failed to create product' });
+    res.status(500).json({ error: 'Failed to create product', details: error?.message || String(error) });
   }
 });
 
