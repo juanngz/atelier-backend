@@ -1,23 +1,41 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 export const dashboardRouter = Router();
 
 // GET /api/dashboard — all dashboard data in one call
-dashboardRouter.get('/', async (_req: Request, res: Response) => {
+dashboardRouter.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
     // Get all data in parallel
     const [products, todayTransactions, allTransactions, last7DaysTransactions] = await Promise.all([
-      prisma.product.findMany({ orderBy: { stock: 'asc' } }),
-      prisma.transaction.findMany({
-        where: { createdAt: { gte: today }, status: 'PAID' },
+      prisma.product.findMany({
+        where: { userId: userId },
+        orderBy: { stock: 'asc' },
       }),
       prisma.transaction.findMany({
-        where: { status: 'PAID' },
+        where: {
+          createdAt: { gte: today },
+          status: 'PAID',
+          product: { userId: userId },
+        },
+      }),
+      prisma.transaction.findMany({
+        where: {
+          status: 'PAID',
+          product: { userId: userId },
+        },
       }),
       prisma.transaction.findMany({
         where: {
@@ -25,6 +43,7 @@ dashboardRouter.get('/', async (_req: Request, res: Response) => {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
           },
           status: 'PAID',
+          product: { userId: userId },
         },
         include: {
           product: { select: { name: true, image: true } },

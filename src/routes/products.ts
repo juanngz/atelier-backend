@@ -1,23 +1,35 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 export const productRouter = Router();
 
-// GET /api/products — list all products (optional ?search= filter)
-productRouter.get('/', async (req: Request, res: Response) => {
+// GET /api/products — list all products (current user only)
+productRouter.get('/', async (req: AuthRequest, res: Response) => {
   try {
     const search = req.query.search as string | undefined;
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
 
     const products = await prisma.product.findMany({
-      where: search
-        ? {
-            OR: [
-              { name: { contains: search, mode: 'insensitive' } },
-              { category: { contains: search, mode: 'insensitive' } },
-            ],
-          }
-        : undefined,
+      where: {
+        AND: [
+          { userId: userId },
+          search
+            ? {
+                OR: [
+                  { name: { contains: search } },
+                  { category: { contains: search } },
+                ],
+              }
+            : {},
+        ],
+      },
       orderBy: { createdAt: 'desc' },
     });
 
@@ -29,7 +41,7 @@ productRouter.get('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/products/:id — get a single product
-productRouter.get('/:id', async (req: Request, res: Response) => {
+productRouter.get('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const product = await prisma.product.findUnique({
       where: { id: Number(req.params.id) },
@@ -37,6 +49,11 @@ productRouter.get('/:id', async (req: Request, res: Response) => {
 
     if (!product) {
       res.status(404).json({ error: 'Product not found' });
+      return;
+    }
+
+    if (product.userId !== req.userId) {
+      res.status(403).json({ error: 'Unauthorized: Product does not belong to this user' });
       return;
     }
 
@@ -48,12 +65,31 @@ productRouter.get('/:id', async (req: Request, res: Response) => {
 });
 
 // POST /api/products — create a new product
-productRouter.post('/', async (req: Request, res: Response) => {
+productRouter.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const { name, price, stock, category, image, description } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    if (!name || price === undefined) {
+      res.status(400).json({ error: 'name and price are required' });
+      return;
+    }
 
     const product = await prisma.product.create({
-      data: { name, price, stock, category, image, description },
+      data: {
+        name,
+        price,
+        stock: stock || 0,
+        category: category || 'General',
+        image: image || '',
+        description: description || undefined,
+        userId,
+      },
     });
 
     res.status(201).json(product);
@@ -64,8 +100,29 @@ productRouter.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/products/:id — update a product
-productRouter.put('/:id', async (req: Request, res: Response) => {
+productRouter.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: Number(req.params.id) },
+    });
+
+    if (!existingProduct) {
+      res.status(404).json({ error: 'Product not found' });
+      return;
+    }
+
+    if (existingProduct.userId !== userId) {
+      res.status(403).json({ error: 'Unauthorized: Product does not belong to this user' });
+      return;
+    }
+
     const product = await prisma.product.update({
       where: { id: Number(req.params.id) },
       data: req.body,
@@ -83,8 +140,29 @@ productRouter.put('/:id', async (req: Request, res: Response) => {
 });
 
 // DELETE /api/products/:id — delete a product
-productRouter.delete('/:id', async (req: Request, res: Response) => {
+productRouter.delete('/:id', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const existingProduct = await prisma.product.findUnique({
+      where: { id: Number(req.params.id) },
+    });
+
+    if (!existingProduct) {
+      res.status(404).json({ error: 'Product not found' });
+      return;
+    }
+
+    if (existingProduct.userId !== userId) {
+      res.status(403).json({ error: 'Unauthorized: Product does not belong to this user' });
+      return;
+    }
+
     await prisma.product.delete({
       where: { id: Number(req.params.id) },
     });

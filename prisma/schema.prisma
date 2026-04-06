@@ -7,6 +7,17 @@ datasource db {
   url      = "file:./dev.db"
 }
 
+
+model User {
+  id           Int             @id @default(autoincrement())
+  nombre       String
+  apellido     String
+  dni          String?          @unique
+  email        String          @unique
+  password     String
+  creadoAt     DateTime        @default(now())
+  products      Product[]       
+}
 model Product {
   id           Int           @id @default(autoincrement())
   name         String
@@ -17,6 +28,8 @@ model Product {
   description  String?
   createdAt    DateTime      @default(now())
   updatedAt    DateTime      @updatedAt
+  userId       Int
+  user         User          @relation(fields: [userId], references: [id])
   transactions Transaction[]
 }
 

@@ -1,13 +1,22 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
+import { AuthRequest } from '../middleware/auth';
 
 const prisma = new PrismaClient();
 export const salesRouter = Router();
 
 // GET /api/sales — list transactions (includes product info)
-salesRouter.get('/', async (req: Request, res: Response) => {
+salesRouter.get('/', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const transactions = await prisma.transaction.findMany({
+      where: { product: { userId: userId } },
       include: {
         product: {
           select: { name: true, image: true },
@@ -24,20 +33,31 @@ salesRouter.get('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/sales/stats — summary metrics
-salesRouter.get('/stats', async (_req: Request, res: Response) => {
+salesRouter.get('/stats', async (req: AuthRequest, res: Response) => {
   try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
+    const whereClause = { product: { userId: userId }, status: 'PAID' };
+    const todayWhereClause = {
+      createdAt: { gte: today },
+      status: 'PAID',
+      product: { userId: userId },
+    };
+
     const [todayTxns, allPaid] = await Promise.all([
       prisma.transaction.findMany({
-        where: {
-          createdAt: { gte: today },
-          status: 'PAID',
-        },
+        where: todayWhereClause,
       }),
       prisma.transaction.findMany({
-        where: { status: 'PAID' },
+        where: whereClause,
       }),
     ]);
 
@@ -59,9 +79,15 @@ salesRouter.get('/stats', async (_req: Request, res: Response) => {
 });
 
 // POST /api/sales — record a new sale (creates transaction + decrements stock)
-salesRouter.post('/', async (req: Request, res: Response) => {
+salesRouter.post('/', async (req: AuthRequest, res: Response) => {
   try {
     const { productId, amount, quantity = 1, customer } = req.body;
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
 
     if (!productId || !amount) {
       res.status(400).json({ error: 'productId and amount are required' });
@@ -70,9 +96,10 @@ salesRouter.post('/', async (req: Request, res: Response) => {
 
     // Use a transaction to ensure atomicity
     const result = await prisma.$transaction(async (tx) => {
-      // Check stock
+      // Check stock and ownership
       const product = await tx.product.findUnique({ where: { id: productId } });
       if (!product) throw new Error('Product not found');
+      if (product.userId !== userId) throw new Error('Unauthorized: Product does not belong to this user');
       if (product.stock < quantity) throw new Error('Insufficient stock');
 
       // Decrement stock
@@ -102,6 +129,10 @@ salesRouter.post('/', async (req: Request, res: Response) => {
       res.status(404).json({ error: error.message });
       return;
     }
+    if (error.message === 'Unauthorized: Product does not belong to this user') {
+      res.status(403).json({ error: error.message });
+      return;
+    }
     if (error.message === 'Insufficient stock') {
       res.status(409).json({ error: error.message });
       return;
@@ -112,17 +143,41 @@ salesRouter.post('/', async (req: Request, res: Response) => {
 });
 
 // PUT /api/sales/:id — update transaction status (e.g. refund)
-salesRouter.put('/:id', async (req: Request, res: Response) => {
+salesRouter.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
-    const transaction = await prisma.transaction.update({
+    const userId = req.userId;
+    const updateData = req.body;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    // Get transaction and verify ownership
+    const transaction = await prisma.transaction.findUnique({
       where: { id: Number(req.params.id) },
-      data: req.body,
+      include: { product: true },
+    });
+
+    if (!transaction) {
+      res.status(404).json({ error: 'Transaction not found' });
+      return;
+    }
+
+    if (transaction.product.userId !== userId) {
+      res.status(403).json({ error: 'Unauthorized: Transaction does not belong to this user' });
+      return;
+    }
+
+    const updated = await prisma.transaction.update({
+      where: { id: Number(req.params.id) },
+      data: updateData,
       include: {
         product: { select: { name: true, image: true } },
       },
     });
 
-    res.json(transaction);
+    res.json(updated);
   } catch (error: any) {
     if (error?.code === 'P2025') {
       res.status(404).json({ error: 'Transaction not found' });

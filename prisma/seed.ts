@@ -1,4 +1,5 @@
 import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcrypt';
 
 const prisma = new PrismaClient();
 
@@ -50,8 +51,27 @@ const products = [
 async function main() {
   console.log('🌱 Seeding database...');
 
+  // Create a default user with hashed password
+  const hashedPassword = await bcrypt.hash('password123', 10);
+  const user = await prisma.user.create({
+    data: {
+      nombre: 'Demo',
+      apellido: 'User',
+      email: 'demo@example.com',
+      password: hashedPassword,
+    },
+  });
+
+  console.log(`✅ Created user: ${user.nombre} ${user.apellido}`);
+
+  // Create products for the user
   for (const product of products) {
-    await prisma.product.create({ data: product });
+    await prisma.product.create({
+      data: {
+        ...product,
+        userId: user.id,
+      },
+    });
   }
 
   const productCount = await prisma.product.count();
