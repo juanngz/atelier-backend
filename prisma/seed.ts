@@ -40,7 +40,7 @@ const products = [
     name: 'Organic Cotton Set',
     price: 89.00,
     stock: 55,
-    unidad: 'cajas',
+    unidad: 'unidades',
     category: 'Artisanal • Sustainable',
     image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBXL7IHZR2g0_Wiq9VqwdMVBESDQpVvpv2oKOjezRGT_vlsxwQaRtom3hoovbezAaFnKY1meHA_XaCG9QCx9J3TgJ8b_zsJd8pClzIcdIiN-lAR7804WE2AFN23O3Yw0Phcyl9N7V1B1bO6gwoeRAZn-2Me3QAg924KKAWSq23Rp-RucG3JcIgEAcW3n12yTstD3FCPDkqTzbMG14y6elq-yFhghpBIfM4AEP1b_ULrZT1yy2pQbSb_EvAf5KZum7A5_vg-5xEidPG8',
   },

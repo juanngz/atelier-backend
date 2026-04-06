@@ -19,7 +19,7 @@ salesRouter.get('/', async (req: AuthRequest, res: Response) => {
       where: { product: { userId: userId } },
       include: {
         product: {
-          select: { name: true, image: true },
+          select: { name: true, image: true, category: true },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -118,7 +118,7 @@ salesRouter.post('/', async (req: AuthRequest, res: Response) => {
           status: 'PAID',
         },
         include: {
-          product: { select: { name: true, image: true } },
+          product: { select: { name: true, image: true, category: true } },
         },
       });
     });
@@ -173,7 +173,7 @@ salesRouter.put('/:id', async (req: AuthRequest, res: Response) => {
       where: { id: Number(req.params.id) },
       data: updateData,
       include: {
-        product: { select: { name: true, image: true } },
+        product: { select: { name: true, image: true, category: true } },
       },
     });
 

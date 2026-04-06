@@ -46,7 +46,7 @@ dashboardRouter.get('/', async (req: AuthRequest, res: Response) => {
           product: { userId: userId },
         },
         include: {
-          product: { select: { name: true, image: true } },
+          product: { select: { name: true, image: true, category: true } },
         },
         orderBy: { createdAt: 'desc' },
       }),
@@ -86,7 +86,7 @@ dashboardRouter.get('/', async (req: AuthRequest, res: Response) => {
     // Recent transactions (last 5)
     const recentTransactions = last7DaysTransactions.slice(0, 5).map((t: any) => ({
       id: t.id,
-      productName: t.product.name,
+      productName: t.product.category ? `${t.product.category} de ${t.product.name}` : t.product.name,
       productImage: t.product.image,
       customer: t.customer,
       amount: t.amount * t.quantity,
