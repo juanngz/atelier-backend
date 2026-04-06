@@ -23,6 +23,7 @@ model Product {
   name         String
   price        Float
   stock        Int           @default(0)
+  unidad       String        @default("cajas")
   category     String    @default("General")
   image        String    @default("")
   description  String?

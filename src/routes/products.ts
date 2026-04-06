@@ -67,7 +67,7 @@ productRouter.get('/:id', async (req: AuthRequest, res: Response) => {
 // POST /api/products — create a new product
 productRouter.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { name, price, stock, category, image, description } = req.body;
+    const { name, price, stock, unidad, category, image, description } = req.body;
     const userId = req.userId;
 
     if (!userId) {
@@ -85,6 +85,7 @@ productRouter.post('/', async (req: AuthRequest, res: Response) => {
         name,
         price,
         stock: stock || 0,
+        unidad: unidad || 'cajas',
         category: category || 'General',
         image: image || '',
         description: description || undefined,
