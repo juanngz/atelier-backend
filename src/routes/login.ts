@@ -62,15 +62,14 @@ loginRouter.post("/", loginLimiter, async (req, res) => {
     
     }
 
-    const token = jwt.sign({ id: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
+    const token = jwt.sign({ sub: user.id, email: user.email }, JWT_SECRET, { expiresIn: "7d" });
     logger.info('Login exitoso', { email: normalizedEmail, ip: req.ip, userId: user.id });
 
     res.status(200).json({
-      id: user.id,
       nombre: user.nombre,
       apellido: user.apellido,
       email: user.email,
-      token, // Retorna el token
+      token, // Retorna el token con el userId en la claim sub
     });
   } catch (error) {
     res.status(500).json({ error: "Error interno al iniciar sesión" });
@@ -93,7 +92,7 @@ loginRouter.post("/validate-session", async (req, res) => {
   try {
     const decoded: any = jwt.verify(token, JWT_SECRET);
     const user = await prisma.user.findUnique({
-      where: { id: Number(decoded.id) },
+      where: { id: Number(decoded.sub) },
       select: { id: true, email: true, nombre: true, apellido: true },
     });
 

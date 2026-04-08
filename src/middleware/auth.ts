@@ -21,9 +21,9 @@ export const authMiddleware = (
     const token = authHeader.slice(7);
     const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
     
-    const decoded = jwt.verify(token, secret) as { id: number; email: string };
-    req.userId = decoded.id;
-    req.userEmail = decoded.email;
+    const decoded = jwt.verify(token, secret) as jwt.JwtPayload & { sub: number; email: string };
+    req.userId = decoded.sub as number;
+    req.userEmail = decoded.email as string;
     next();
   } catch (error: any) {
     if (error.name === 'TokenExpiredError') {
