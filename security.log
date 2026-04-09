@@ -9,3 +9,5 @@
 {"email":"euge@mail.com","ip":"::1","level":"info","message":"Login exitoso","timestamp":"2026-04-07T18:11:37.136Z","userId":2}
 {"email":"euge@mail.com","ip":"::1","level":"info","message":"Login exitoso","timestamp":"2026-04-08T20:41:50.877Z","userId":2}
 {"email":"euge@mail.com","ip":"::1","level":"info","message":"Login exitoso","timestamp":"2026-04-08T22:06:12.874Z","userId":2}
+{"email":"test@example.com","ip":"::1","level":"info","message":"Login exitoso","timestamp":"2026-04-09T00:00:06.379Z","userId":3}
+{"email":"euge@mail.com","ip":"::1","level":"info","message":"Login exitoso","timestamp":"2026-04-09T00:02:22.079Z","userId":2}
