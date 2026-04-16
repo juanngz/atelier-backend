@@ -23,8 +23,8 @@ productRouter.get('/', async (req: AuthRequest, res: Response) => {
           search
             ? {
                 OR: [
-                  { name: { contains: search } },
-                  { category: { contains: search } },
+                  { name: { contains: search, mode: 'insensitive' as const } },
+                  { category: { contains: search, mode: 'insensitive' as const } },
                 ],
               }
             : {},
