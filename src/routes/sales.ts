@@ -81,7 +81,7 @@ salesRouter.get('/stats', async (req: AuthRequest, res: Response) => {
 // POST /api/sales — record a new sale (creates transaction + decrements stock)
 salesRouter.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { productId, amount, quantity = 1, customer } = req.body;
+    const { productId, amount, quantity = 1 } = req.body;
     const userId = req.userId;
 
     if (!userId) {
@@ -114,7 +114,6 @@ salesRouter.post('/', async (req: AuthRequest, res: Response) => {
           productId,
           amount,
           quantity,
-          customer: customer || 'Anonymous',
           status: 'PAID',
         },
         include: {

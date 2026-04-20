@@ -39,7 +39,6 @@ model Transaction {
   id          Int      @id @default(autoincrement())
   productId   Int
   product     Product  @relation(fields: [productId], references: [id])
-  customer    String   @default("Anonymous")
   amount      Float
   quantity    Int      @default(1)
   status      String   @default("PAID") // PAID | REFUNDED | PENDING
