@@ -88,11 +88,16 @@ dashboardRouter.get('/', async (req: AuthRequest, res: Response) => {
       id: t.id,
       productName: t.product.category ? `${t.product.category} de ${t.product.name}` : t.product.name,
       productImage: t.product.image,
-      customer: t.customer,
       amount: t.amount * t.quantity,
       status: t.status,
       date: t.createdAt,
     }));
+
+    // Low stock alert (stock <= 5)
+    const LOW_STOCK_THRESHOLD = 5;
+    const lowStockProducts = products
+      .filter((p: any) => p.stock <= LOW_STOCK_THRESHOLD)
+      .map((p: any) => ({ id: p.id, name: p.name, stock: p.stock, unidad: p.unidad, category: p.category }));
 
     res.json({
       dailyRevenue,
@@ -100,6 +105,7 @@ dashboardRouter.get('/', async (req: AuthRequest, res: Response) => {
       totalProducts,
       chartData,
       recentTransactions,
+      lowStockProducts,
     });
   } catch (error) {
     console.error('Error fetching dashboard data:', error);
