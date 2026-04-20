@@ -19,7 +19,11 @@ export const authMiddleware = (
     }
 
     const token = authHeader.slice(7);
-    const secret = process.env.JWT_SECRET || 'your-secret-key-change-in-production';
+    const secret = process.env.JWT_SECRET;
+    if (!secret) {
+      res.status(500).json({ error: 'Server misconfiguration' });
+      return;
+    }
     
     const decoded = jwt.verify(token, secret) as jwt.JwtPayload & { sub: number; email: string };
     req.userId = decoded.sub as number;

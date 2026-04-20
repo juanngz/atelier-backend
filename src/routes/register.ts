@@ -1,12 +1,21 @@
 import { PrismaClient } from "@prisma/client";
 import bcrypt from "bcrypt";
 import { Router } from "express";
+import rateLimit from "express-rate-limit";
 import validator from "validator";
 
 export const registerRouter = Router();
 const prisma = new PrismaClient();
 
-registerRouter.post("/", async (req, res) => {
+const registerRateLimit = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  message: { error: 'Demasiados intentos de registro. Intentá de nuevo en 1 hora.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+registerRouter.post("/", registerRateLimit, async (req, res) => {
   const { nombre, apellido, email, password } = req.body;
 
   try {

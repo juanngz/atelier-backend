@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { productRouter } from './routes/products';
 import { salesRouter } from './routes/sales';
 import { dashboardRouter } from './routes/dashboard';
@@ -18,6 +19,7 @@ const allowedOrigins: (string | RegExp)[] = [
   'http://localhost:4173',
 ];
 
+app.use(helmet());
 app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman)
@@ -30,7 +32,7 @@ app.use(cors({
   },
   credentials: true,
 }));
-app.use(express.json());
+app.use(express.json({ limit: '10kb' }));
 
 // Public routes (no auth required)
 app.use('/api/login', loginRouter);
