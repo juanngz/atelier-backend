@@ -81,7 +81,7 @@ salesRouter.get('/stats', async (req: AuthRequest, res: Response) => {
 // POST /api/sales — record a new sale (creates transaction + decrements stock)
 salesRouter.post('/', async (req: AuthRequest, res: Response) => {
   try {
-    const { productId, amount, quantity = 1, customer } = req.body;
+    const { productId, amount, quantity = 1 } = req.body;
     const userId = req.userId;
 
     if (!userId) {
@@ -114,7 +114,6 @@ salesRouter.post('/', async (req: AuthRequest, res: Response) => {
           productId,
           amount,
           quantity,
-          customer: customer || 'Anonymous',
           status: 'PAID',
         },
         include: {
@@ -146,14 +145,13 @@ salesRouter.post('/', async (req: AuthRequest, res: Response) => {
 salesRouter.put('/:id', async (req: AuthRequest, res: Response) => {
   try {
     const userId = req.userId;
-    const updateData = req.body;
+    const { amount, quantity, status } = req.body;
 
     if (!userId) {
       res.status(401).json({ error: 'Unauthorized' });
       return;
     }
 
-    // Get transaction and verify ownership
     const transaction = await prisma.transaction.findUnique({
       where: { id: Number(req.params.id) },
       include: { product: true },
@@ -169,12 +167,25 @@ salesRouter.put('/:id', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const updated = await prisma.transaction.update({
-      where: { id: Number(req.params.id) },
-      data: updateData,
-      include: {
-        product: { select: { name: true, image: true, category: true } },
-      },
+    const updated = await prisma.$transaction(async (tx) => {
+      if (quantity !== undefined && quantity !== transaction.quantity) {
+        const stockDiff = transaction.quantity - quantity;
+        await tx.product.update({
+          where: { id: transaction.productId },
+          data: { stock: { increment: stockDiff } },
+        });
+      }
+      return tx.transaction.update({
+        where: { id: Number(req.params.id) },
+        data: {
+          ...(amount !== undefined && { amount }),
+          ...(quantity !== undefined && { quantity }),
+          ...(status !== undefined && { status }),
+        },
+        include: {
+          product: { select: { name: true, image: true, category: true } },
+        },
+      });
     });
 
     res.json(updated);
@@ -185,5 +196,49 @@ salesRouter.put('/:id', async (req: AuthRequest, res: Response) => {
     }
     console.error('Error updating transaction:', error);
     res.status(500).json({ error: 'Failed to update transaction' });
+  }
+});
+
+// DELETE /api/sales/:id — remove transaction and restore stock
+salesRouter.delete('/:id', async (req: AuthRequest, res: Response) => {
+  try {
+    const userId = req.userId;
+
+    if (!userId) {
+      res.status(401).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    const transaction = await prisma.transaction.findUnique({
+      where: { id: Number(req.params.id) },
+      include: { product: true },
+    });
+
+    if (!transaction) {
+      res.status(404).json({ error: 'Transaction not found' });
+      return;
+    }
+
+    if (transaction.product.userId !== userId) {
+      res.status(403).json({ error: 'Unauthorized' });
+      return;
+    }
+
+    await prisma.$transaction(async (tx) => {
+      await tx.product.update({
+        where: { id: transaction.productId },
+        data: { stock: { increment: transaction.quantity } },
+      });
+      await tx.transaction.delete({ where: { id: transaction.id } });
+    });
+
+    res.status(204).send();
+  } catch (error: any) {
+    if (error?.code === 'P2025') {
+      res.status(404).json({ error: 'Transaction not found' });
+      return;
+    }
+    console.error('Error deleting transaction:', error);
+    res.status(500).json({ error: 'Failed to delete transaction' });
   }
 });

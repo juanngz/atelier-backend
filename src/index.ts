@@ -11,8 +11,9 @@ const app = express();
 const PORT = process.env.PORT || 4000;
 
 // Middleware
-const allowedOrigins = [
-  'https://atelier-frontend-nine.vercel.app',
+const allowedOrigins: (string | RegExp)[] = [
+  'https://atelier-frontend-nine.vercel.app',   // producción (main)
+  /^https:\/\/atelier-frontend.*\.vercel\.app$/, // previews de develop y otras branches
   'http://localhost:5173',
   'http://localhost:4173',
 ];
@@ -21,7 +22,10 @@ app.use(cors({
   origin: (origin, callback) => {
     // Allow requests with no origin (mobile apps, curl, Postman)
     if (!origin) return callback(null, true);
-    if (allowedOrigins.includes(origin)) return callback(null, true);
+    const allowed = allowedOrigins.some(o =>
+      typeof o === 'string' ? o === origin : o.test(origin)
+    );
+    if (allowed) return callback(null, true);
     callback(new Error(`CORS blocked: ${origin}`));
   },
   credentials: true,
