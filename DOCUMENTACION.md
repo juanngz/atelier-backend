@@ -70,16 +70,135 @@ Transaction
 
 ---
 
-## 3. Cómo Funciona el Deploy
+## 3. Estructura de GitHub y Flujo de Branches
 
-### Repos y branches
-| Repo | Branch activo | Qué hace Vercel |
-|------|---------------|-----------------|
+### Repositorios
+El proyecto vive en dos repos separados bajo la cuenta `juanngz`:
+
+| Repo | Descripción |
+|------|-------------|
+| `juanngz/atelier-backend` | API Node.js + Express + Prisma |
+| `juanngz/atelier-frontend` | App React + Vite + TypeScript |
+
+Ambos repos comparten la misma estructura de branches y el mismo flujo de trabajo.
+
+---
+
+### Estructura de Branches
+
+```
+main        ← Producción. Lo que está acá está vivo en Vercel.
+  │
+develop     ← Integración. Acá se juntan los cambios antes de ir a producción.
+  │
+feature/X   ← Desarrollo. Cada feature nueva tiene su propia branch.
+```
+
+#### `main`
+- Es la rama de **producción**.
+- Vercel escucha esta rama y hace deploy automático.
+- **Nunca hacer commits directos acá.** Solo llegan cambios vía Pull Request desde `develop`.
+
+#### `develop`
+- Es la rama de **integración/staging**.
+- Acá se prueban los cambios juntos antes de ir a producción.
+- **No hacer commits directos de features nuevas acá.** Llegan vía merge desde `feature/*`.
+- Sí se pueden hacer fixes pequeños y urgentes directamente (hotfixes).
+
+#### `feature/<nombre>`
+- Una rama por cada feature o fix nuevo.
+- Se crea desde `develop` y se mergea de vuelta a `develop` cuando está lista.
+- Ejemplos de nombres: `feature/alertas-stock`, `feature/exportar-pdf`, `fix/cors-preflight`.
+
+#### `deploy` *(legacy)*
+- Branch histórica usada durante la migración a PostgreSQL.
+- Ya no se usa activamente.
+
+---
+
+### Flujo de Trabajo — Procedimiento para hacer un cambio
+
+Seguir este flujo **siempre**, sin importar si el cambio es grande o pequeño:
+
+```
+develop ──────────────────────────────────────────► develop
+    │                                                   ▲
+    │  git checkout -b feature/mi-cambio                │
+    ▼                                                   │
+feature/mi-cambio  ──── commits ────  git push  ──► PR a develop
+```
+
+#### Paso a paso
+
+**1. Asegurate de tener `develop` actualizado**
+```bash
+git checkout develop
+git pull origin develop
+```
+
+**2. Creá tu branch de feature a partir de `develop`**
+```bash
+git checkout -b feature/nombre-descriptivo
+# Ejemplos:
+# git checkout -b feature/filtro-por-categoria
+# git checkout -b fix/precio-negativo
+```
+
+**3. Hacé tus cambios y commiteá**
+```bash
+# Trabajá libremente acá
+git add -A
+git commit -m "feat: descripción de lo que hiciste"
+# Convenciones de prefijos:
+# feat:     nueva funcionalidad
+# fix:      corrección de bug
+# chore:    tarea técnica sin impacto en features (deps, config, etc.)
+# docs:     solo cambios de documentación
+# refactor: cambio de código sin cambiar comportamiento
+# style:    cambios de UI/CSS sin lógica
+```
+
+**4. Pusheá tu branch**
+```bash
+git push origin feature/nombre-descriptivo
+```
+
+**5. Abrí un Pull Request en GitHub**
+- Base: `develop` ← Compare: `feature/nombre-descriptivo`
+- Describí qué cambia y por qué.
+- Si rompe algo o tiene dependencias (ej: migrate), anotarlo en el PR.
+
+**6. Mergeá el PR a `develop`**
+- Podés mergearlo vos mismo si no hay conflictos.
+- Después del merge, Vercel puede generar un preview de `develop` si está configurado.
+
+**7. Cuando `develop` está probado → PR a `main`**
+- Base: `main` ← Compare: `develop`
+- Este es el paso que dispara el deploy a producción.
+
+---
+
+### Reglas rápidas
+
+| ✅ Hacer | ❌ No hacer |
+|---------|------------|
+| Crear `feature/*` desde `develop` | Pushear directo a `main` |
+| Mergear feature → develop vía PR | Mergear feature directo a `main` |
+| Mergear develop → main cuando esté todo probado | Commitear `.env` o secretos |
+| Usar prefijos en los commits (`feat:`, `fix:`, etc.) | Dejar branches de feature sin mergear y abandonadas |
+
+---
+
+## 4. Cómo Funciona el Deploy
+
+### Repos y branches de deploy
+| Repo | Branch de producción | Qué hace Vercel |
+|------|----------------------|-----------------|
 | `juanngz/atelier-frontend` | `main` | Buildea Vite y sirve archivos estáticos |
 | `juanngz/atelier-backend` | `main` | Corre Express como función serverless |
 
 ### Proceso automático
-Cada vez que pusheás a `main`, Vercel detecta el cambio y despliega automáticamente.
+Cada vez que se mergea a `main`, Vercel detecta el cambio y despliega automáticamente en ~2 minutos.
 
 ### Variables de entorno en Vercel
 **Backend (atelier-backend):**
