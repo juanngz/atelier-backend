@@ -50,6 +50,11 @@ app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
+// Catch-all 404
+app.use((req, res) => {
+  res.status(404).json({ error: `Not Found: ${req.method} ${req.originalUrl}` });
+});
+
 // Start server (only in local dev, not in Vercel serverless)
 if (process.env.VERCEL !== '1') {
   app.listen(PORT, () => {
