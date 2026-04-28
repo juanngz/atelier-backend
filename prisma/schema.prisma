@@ -66,10 +66,11 @@ model Promotion {
 }
 
 model PromotionItem {
-  id          Int       @id @default(autoincrement())
-  promotionId Int
-  productId   Int
-  quantity    Int
-  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
-  product     Product   @relation(fields: [productId], references: [id])
+  id           Int       @id @default(autoincrement())
+  promotionId  Int
+  productId    Int?
+  categoryName String?
+  quantity     Int
+  promotion    Promotion  @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product      Product?   @relation(fields: [productId], references: [id])
 }

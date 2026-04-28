@@ -47,14 +47,28 @@ promotionsRouter.post('/', async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    // Verify all products belong to this user
-    const productIds: number[] = items.map((i: any) => Number(i.productId));
-    const products = await prisma.product.findMany({
-      where: { id: { in: productIds }, userId },
-    });
-    if (products.length !== productIds.length) {
-      res.status(403).json({ error: 'Uno o más productos no pertenecen a este usuario' });
+    // Each item must have either productId or categoryName
+    const validItems = items.filter((i: any) =>
+      (i.productId || i.categoryName) && Number(i.quantity) > 0
+    );
+    if (validItems.length === 0) {
+      res.status(400).json({ error: 'Cada item debe tener productId o categoryName y cantidad > 0' });
       return;
+    }
+
+    // Verify product ownership only for product-specific items
+    const productIds: number[] = validItems
+      .filter((i: any) => i.productId)
+      .map((i: any) => Number(i.productId));
+
+    if (productIds.length > 0) {
+      const products = await prisma.product.findMany({
+        where: { id: { in: productIds }, userId },
+      });
+      if (products.length !== productIds.length) {
+        res.status(403).json({ error: 'Uno o más productos no pertenecen a este usuario' });
+        return;
+      }
     }
 
     const promotion = await prisma.promotion.create({
@@ -63,8 +77,9 @@ promotionsRouter.post('/', async (req: AuthRequest, res: Response) => {
         promoPrice: Number(promoPrice),
         userId,
         items: {
-          create: items.map((i: any) => ({
-            productId: Number(i.productId),
+          create: validItems.map((i: any) => ({
+            ...(i.productId ? { productId: Number(i.productId) } : {}),
+            ...(i.categoryName ? { categoryName: String(i.categoryName) } : {}),
             quantity: Number(i.quantity),
           })),
         },
@@ -93,25 +108,36 @@ promotionsRouter.put('/:id', async (req: AuthRequest, res: Response) => {
 
     const { name, promoPrice, isActive, items } = req.body;
 
-    // If items are provided, verify ownership and replace all
     if (items !== undefined) {
-      const productIds: number[] = items.map((i: any) => Number(i.productId));
-      const products = await prisma.product.findMany({
-        where: { id: { in: productIds }, userId },
-      });
-      if (products.length !== productIds.length) {
-        res.status(403).json({ error: 'Uno o más productos no pertenecen a este usuario' });
-        return;
+      const validItems = items.filter((i: any) =>
+        (i.productId || i.categoryName) && Number(i.quantity) > 0
+      );
+      const productIds: number[] = validItems
+        .filter((i: any) => i.productId)
+        .map((i: any) => Number(i.productId));
+
+      if (productIds.length > 0) {
+        const products = await prisma.product.findMany({
+          where: { id: { in: productIds }, userId },
+        });
+        if (products.length !== productIds.length) {
+          res.status(403).json({ error: 'Uno o más productos no pertenecen a este usuario' });
+          return;
+        }
       }
     }
 
     const updated = await prisma.$transaction(async (tx) => {
       if (items !== undefined) {
+        const validItems = items.filter((i: any) =>
+          (i.productId || i.categoryName) && Number(i.quantity) > 0
+        );
         await tx.promotionItem.deleteMany({ where: { promotionId: promotion.id } });
         await tx.promotionItem.createMany({
-          data: items.map((i: any) => ({
+          data: validItems.map((i: any) => ({
             promotionId: promotion.id,
-            productId: Number(i.productId),
+            ...(i.productId ? { productId: Number(i.productId) } : {}),
+            ...(i.categoryName ? { categoryName: String(i.categoryName) } : {}),
             quantity: Number(i.quantity),
           })),
         });
@@ -146,7 +172,6 @@ promotionsRouter.delete('/:id', async (req: AuthRequest, res: Response) => {
     if (!promotion) { res.status(404).json({ error: 'Promotion not found' }); return; }
     if (promotion.userId !== userId) { res.status(403).json({ error: 'Unauthorized' }); return; }
 
-    // Desvincula transactions antes de borrar (SetNull via Prisma relation)
     await prisma.promotion.delete({ where: { id: promotion.id } });
 
     res.status(204).send();
