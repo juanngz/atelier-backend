@@ -48,6 +48,7 @@ model Transaction {
   promotionId   Int?
   promotionName String?
   promotion     Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  saleGroupId   String?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 }
