@@ -6,6 +6,7 @@ import { salesRouter } from './routes/sales';
 import { dashboardRouter } from './routes/dashboard';
 import { loginRouter } from './routes/login';
 import { registerRouter } from './routes/register';
+import { promotionsRouter } from './routes/promotions';
 import { authMiddleware } from './middleware/auth';
 
 const app = express();
@@ -43,6 +44,7 @@ app.use('/api/register', registerRouter);
 // Protected routes (auth required)
 app.use('/api/products', authMiddleware, productRouter);
 app.use('/api/sales', authMiddleware, salesRouter);
+app.use('/api/promotions', authMiddleware, promotionsRouter);
 app.use('/api/dashboard', authMiddleware, dashboardRouter);
 
 // Health check
