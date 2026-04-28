@@ -17,31 +17,59 @@ model User {
   email        String          @unique
   password     String
   creadoAt     DateTime        @default(now())
-  products      Product[]       
+  products     Product[]
+  promotions   Promotion[]
 }
+
 model Product {
-  id           Int           @id @default(autoincrement())
-  name         String
-  price        Float
-  stock        Int           @default(0)
-  unidad       String        @default("cajas")
-  category     String    @default("General")
-  image        String    @default("")
-  description  String?
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  userId       Int
-  user         User          @relation(fields: [userId], references: [id])
-  transactions Transaction[]
+  id             Int             @id @default(autoincrement())
+  name           String
+  price          Float
+  stock          Float           @default(0)
+  unidad         String          @default("cajas")
+  category       String          @default("General")
+  image          String          @default("")
+  description    String?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  userId         Int
+  user           User            @relation(fields: [userId], references: [id])
+  transactions   Transaction[]
+  promotionItems PromotionItem[]
 }
 
 model Transaction {
-  id          Int      @id @default(autoincrement())
+  id            Int        @id @default(autoincrement())
+  productId     Int
+  product       Product    @relation(fields: [productId], references: [id])
+  amount        Float
+  quantity      Float      @default(1)
+  status        String     @default("PAID") // PAID | REFUNDED | PENDING
+  promotionId   Int?
+  promotionName String?
+  promotion     Promotion? @relation(fields: [promotionId], references: [id], onDelete: SetNull)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Promotion {
+  id           Int             @id @default(autoincrement())
+  name         String
+  promoPrice   Float
+  isActive     Boolean         @default(true)
+  userId       Int
+  user         User            @relation(fields: [userId], references: [id])
+  items        PromotionItem[]
+  transactions Transaction[]
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+}
+
+model PromotionItem {
+  id          Int       @id @default(autoincrement())
+  promotionId Int
   productId   Int
-  product     Product  @relation(fields: [productId], references: [id])
-  amount      Float
-  quantity    Int      @default(1)
-  status      String   @default("PAID") // PAID | REFUNDED | PENDING
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  quantity    Int
+  promotion   Promotion @relation(fields: [promotionId], references: [id], onDelete: Cascade)
+  product     Product   @relation(fields: [productId], references: [id])
 }
